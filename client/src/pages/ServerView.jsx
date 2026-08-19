@@ -217,9 +217,6 @@ export default function ServerView() {
               # {c.name}
             </button>
           ))}
-          <form className="mini-form" onSubmit={createChat}>
-            <input value={newChat} onChange={(e) => setNewChat(e.target.value)} placeholder="+ new chat" />
-          </form>
         </div>
 
         <div className="section-label">Members ({activeGroup?.members.length ?? 0})</div>
@@ -248,10 +245,6 @@ export default function ServerView() {
           </form>
           <div className="invite-hint">Type their exact username. They must be registered.</div>
         </div>
-
-        <form className="mini-form" onSubmit={createGroup}>
-          <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="+ new group" />
-        </form>
 
         <div className="session">
           <span className="session-icon">{user?.icon ?? '👤'}</span>

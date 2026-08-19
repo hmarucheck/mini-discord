@@ -7,6 +7,21 @@ import { cookieOptions } from '../lib/auth.js';
 
 const router = Router();
 
+// Ensure the user belongs to at least one group (their own personal group with
+// a # general chat). Idempotent — if they already have any group, we don't add.
+export async function ensurePersonalGroup(userId, displayName) {
+  const count = await prisma.server.count({ where: { memberships: { some: { userId } } } });
+  if (count > 0) return null;
+  return prisma.server.create({
+    data: {
+      name: `${displayName}'s Group`,
+      ownerId: userId,
+      memberships: { create: { userId, role: 'owner' } },
+      channels: { create: { name: 'general' } },
+    },
+  });
+}
+
 // POST /api/auth/register  -> create user, set auth cookie
 router.post('/register', async (req, res, next) => {
   try {
@@ -44,6 +59,10 @@ router.post('/register', async (req, res, next) => {
       data: { email: normalizedEmail, name: displayName, hash },
     });
 
+    // Every user gets their own group + chat automatically — no setup needed
+    // before they can message or add people.
+    await ensurePersonalGroup(user.id, displayName);
+
     res.cookie(COOKIE_NAME, signToken(user.id), cookieOptions());
     res.status(201).json({ user: publicUser(user) });
   } catch (err) {
@@ -66,6 +85,9 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // Make sure existing users also have a personal group (idempotent).
+    await ensurePersonalGroup(user.id, user.name);
+
     res.cookie(COOKIE_NAME, signToken(user.id), cookieOptions());
     res.json({ user: publicUser(user) });
   } catch (err) {
@@ -80,8 +102,14 @@ router.post('/logout', (req, res) => {
 });
 
 // GET /api/auth/me  -> current session user (requireAuth)
-router.get('/me', requireAuth, (req, res) => {
-  res.json({ user: publicUser(req.user) });
+router.get('/me', requireAuth, async (req, res, next) => {
+  try {
+    // Returning users keep their cookie; make sure they still have a group.
+    await ensurePersonalGroup(req.user.id, req.user.name);
+    res.json({ user: publicUser(req.user) });
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;
