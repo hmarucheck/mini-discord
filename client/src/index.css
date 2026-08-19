@@ -108,6 +108,18 @@ body {
   border-radius: 6px; padding: 8px 10px; font-size: 13px; outline: none;
 }
 .mini-form input:focus { border-color: var(--accent); }
+.mini-form input:disabled { opacity: .5; cursor: not-allowed; }
+
+.invite-box { padding: 4px 8px 8px; }
+.invite-form { display: flex; gap: 6px; }
+.invite-form input { flex: 1; }
+.invite-send {
+  background: var(--accent); color: #fff; border: none; border-radius: 6px;
+  padding: 0 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.invite-send:hover:not(:disabled) { background: var(--accent-hover); }
+.invite-send:disabled { opacity: .5; cursor: not-allowed; }
+.invite-hint { font-size: 11px; color: var(--muted); padding: 4px 2px 0; }
 
 .session {
   display: flex; align-items: center; gap: 10px; padding: 12px;

@@ -17,6 +17,7 @@ export default function ServerView() {
   const [newGroup, setNewGroup] = useState('');
   const [newChat, setNewChat] = useState('');
   const [inviteUsername, setInviteUsername] = useState('');
+  const [inviteBusy, setInviteBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -175,14 +176,22 @@ export default function ServerView() {
 
   const invite = async (e) => {
     e.preventDefault();
-    if (!inviteUsername.trim() || !activeGroup) return;
+    const name = inviteUsername.trim();
+    if (!name) return;
+    if (!activeGroup) {
+      setError('Create or open a group first, then invite someone to it.');
+      return;
+    }
+    setInviteBusy(true);
     try {
-      await api.inviteMember(activeGroup.id, inviteUsername.trim());
+      await api.inviteMember(activeGroup.id, name);
       setInviteUsername('');
       setError('');
-      setNotice(`Invite sent to ${inviteUsername.trim()} — they'll get a popup to accept.`);
+      setNotice(`Invite sent to "${name}" — they'll get a popup to accept.`);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setInviteBusy(false);
     }
   };
 
@@ -239,13 +248,21 @@ export default function ServerView() {
         </div>
 
         {/* Invite by username */}
-        <form className="mini-form" onSubmit={invite}>
-          <input
-            value={inviteUsername}
-            onChange={(e) => setInviteUsername(e.target.value)}
-            placeholder="+ invite by username"
-          />
-        </form>
+        <div className="invite-box">
+          <div className="section-label">Invite</div>
+          <form className="mini-form invite-form" onSubmit={invite}>
+            <input
+              value={inviteUsername}
+              onChange={(e) => setInviteUsername(e.target.value)}
+              placeholder="Username"
+              disabled={!activeGroup}
+            />
+            <button type="submit" className="invite-send" disabled={!inviteUsername.trim() || inviteBusy || !activeGroup}>
+              {inviteBusy ? '…' : 'Send'}
+            </button>
+          </form>
+          {activeGroup && <div className="invite-hint">Who you invite must be registered. Only the owner can invite.</div>}
+        </div>
 
         <form className="mini-form" onSubmit={createGroup}>
           <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="+ new group" />
