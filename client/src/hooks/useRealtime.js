@@ -29,20 +29,21 @@ export function useRealtime(channelId, handlers) {
   return getSocket();
 }
 
-// useUserRealtime listens for events targeted at this user (e.g. new invites).
-export function useUserRealtime(onNewInvite) {
-  const cbRef = useRef(onNewInvite);
-  cbRef.current = onNewInvite;
+// useUserRealtime listens for events targeted at this user
+// (group:added = someone added me to their group; member:joined = propagated via server room).
+export function useUserRealtime(onEvent) {
+  const cbRef = useRef(onEvent);
+  cbRef.current = onEvent;
 
   useEffect(() => {
     const socket = connectSocket();
     if (socket.disconnected) socket.connect();
 
-    const onInvite = (data) => cbRef.current?.(data);
-    socket.on('invite:new', onInvite);
+    const onAdded = (data) => cbRef.current?.({ type: 'group:added', ...data });
+    socket.on('group:added', onAdded);
 
     return () => {
-      socket.off('invite:new', onInvite);
+      socket.off('group:added', onAdded);
     };
   }, []);
 

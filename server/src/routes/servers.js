@@ -66,55 +66,49 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// POST /api/servers/:serverId/members  -> send an invite by username (pending)
+// POST /api/servers/:serverId/members  -> add someone by username (direct)
 router.post('/:serverId/members', async (req, res, next) => {
   try {
     const serverId = Number(req.params.serverId);
     const username = String(req.body?.username ?? '').trim().toLowerCase();
     if (!username) return res.status(400).json({ error: 'Username is required' });
 
-    // Inviter must be a member, and only owners may invite.
+    // Only members of the group can add others.
     const inviter = await prisma.membership.findUnique({
       where: { userId_serverId: { userId: req.user.id, serverId } },
     });
     if (!inviter) return res.status(403).json({ error: 'Not a member of this group' });
-    if (inviter.role !== 'owner') {
-      return res.status(403).json({ error: 'Only the group owner can invite' });
-    }
 
-    // Find the invitee by username (case-insensitive, DB-agnostic).
+    // Find the user by username (case-insensitive, DB-agnostic).
     const allUsers = await prisma.user.findMany({ select: { id: true, name: true, icon: true } });
-    const invitee = allUsers.find((u) => u.name.toLowerCase() === username);
-    if (!invitee) return res.status(404).json({ error: 'No user with that username' });
-    if (invitee.id === req.user.id) return res.status(400).json({ error: "That's you!" });
+    const target = allUsers.find((u) => u.name.toLowerCase() === username);
+    if (!target) return res.status(404).json({ error: 'No user with that username' });
+    if (target.id === req.user.id) return res.status(400).json({ error: "That's you!" });
 
     const existing = await prisma.membership.findUnique({
-      where: { userId_serverId: { userId: invitee.id, serverId } },
+      where: { userId_serverId: { userId: target.id, serverId } },
     });
     if (existing) return res.status(409).json({ error: 'Already a member' });
 
-    // Don't stack duplicate pending invites.
-    const dup = await prisma.invite.findFirst({
-      where: { serverId, toUserId: invitee.id, status: 'pending' },
+    await prisma.membership.create({
+      data: { userId: target.id, serverId, role: 'member' },
     });
-    if (dup) return res.status(409).json({ error: 'Invite already sent & waiting' });
 
-    const invite = await prisma.invite.create({
-      data: { serverId, fromUserId: req.user.id, toUserId: invitee.id, status: 'pending' },
-    });
     const group = await prisma.server.findUnique({ where: { id: serverId } });
 
-    // Realtime: tell the invitee's open sockets we invited them.
+    // Realtime: tell everyone in the group that a new member joined, and the
+    // added user's own open sockets so their view refreshes too.
     const io = getIO();
     if (io) {
-      io.to(`user:${invitee.id}`).emit('invite:new', {
-        inviteId: invite.id,
+      const member = { id: target.id, name: target.name, icon: target.icon, role: 'member' };
+      io.to(`server:${serverId}`).emit('member:joined', { member });
+      io.to(`user:${target.id}`).emit('group:added', {
+        groupId: serverId,
         groupName: group?.name ?? '',
-        fromName: req.user.name,
       });
     }
 
-    res.status(201).json({ inviteId: invite.id });
+    res.status(201).json({ member: { id: target.id, name: target.name, icon: target.icon, role: 'member' } });
   } catch (err) {
     next(err);
   }

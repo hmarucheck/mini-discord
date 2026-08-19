@@ -20,9 +20,6 @@ export default function ServerView() {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-
-  // Incoming invites (either fetched on load, or pushed live via socket).
-  const [invites, setInvites] = useState([]);
   const msgEndRef = useRef(null);
 
   const loadGroups = useCallback(async (selectGroupId) => {
@@ -45,10 +42,9 @@ export default function ServerView() {
     }
   }, [activeGroup]);
 
-  // Load groups + pending invites on mount.
+  // Load groups on mount.
   useEffect(() => {
     loadGroups();
-    api.listInvites().then(({ invites }) => setInvites(invites)).catch(() => {});
   }, [loadGroups]);
 
   const pickGroup = (g) => {
@@ -80,28 +76,16 @@ export default function ServerView() {
 
   useRealtime(activeChatId, { onMessage: applyMessage, onReaction: applyReaction });
 
-  // Real-time invites: when someone invites us, push a toast to the top.
-  const onNewInvite = useCallback((inv) => {
-    setInvites((prev) => [inv, ...prev]);
-  }, []);
-
-  const respondInvite = useCallback(async (inv, action) => {
-    setInvites((prev) => prev.filter((i) => i.inviteId !== inv.inviteId && i.id !== inv.id));
-    try {
-      if (action === 'accept') {
-        const { group } = await api.acceptInvite(inv.inviteId ?? inv.id);
-        await loadGroups(group.id);
-      } else {
-        await api.declineInvite(inv.inviteId ?? inv.id);
-      }
-    } catch (e) {
-      setError(e.message);
-      // reload invites to reconcile
-      api.listInvites().then(({ invites }) => setInvites(invites)).catch(() => {});
+  // Real-time: if someone adds me to their group, refresh so it appears.
+  const onUserEvent = useCallback((ev) => {
+    if (ev?.type === 'group:added') {
+      // Someone added me — reload groups and select theirs.
+      loadGroups(ev.groupId);
+      setNotice(`You were added to "${ev.groupName}".`);
     }
   }, [loadGroups]);
 
-  useUserRealtime(onNewInvite);
+  useUserRealtime(onUserEvent);
 
   useEffect(() => {
     msgEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
@@ -179,15 +163,17 @@ export default function ServerView() {
     const name = inviteUsername.trim();
     if (!name) return;
     if (!activeGroup) {
-      setError('Create or open a group first, then invite someone to it.');
+      setError('Create or open a group first, then add someone to it.');
       return;
     }
     setInviteBusy(true);
     try {
-      await api.inviteMember(activeGroup.id, name);
+      const { member } = await api.inviteMember(activeGroup.id, name);
+      // Immediately show the new member in the list + notify.
+      setActiveGroup((g) => ({ ...g, members: [...g.members, member] }));
       setInviteUsername('');
       setError('');
-      setNotice(`Invite sent to "${name}" — they'll get a popup to accept.`);
+      setNotice(`Added "${name}" to ${activeGroup.name}.`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -247,21 +233,20 @@ export default function ServerView() {
           ))}
         </div>
 
-        {/* Invite by username */}
+        {/* Add by username */}
         <div className="invite-box">
-          <div className="section-label">Invite</div>
+          <div className="section-label">Add someone</div>
           <form className="mini-form invite-form" onSubmit={invite}>
             <input
               value={inviteUsername}
               onChange={(e) => setInviteUsername(e.target.value)}
               placeholder="Username"
-              disabled={!activeGroup}
             />
-            <button type="submit" className="invite-send" disabled={!inviteUsername.trim() || inviteBusy || !activeGroup}>
-              {inviteBusy ? '…' : 'Send'}
+            <button type="submit" className="invite-send" disabled={!inviteUsername.trim() || inviteBusy}>
+              {inviteBusy ? '…' : 'Add'}
             </button>
           </form>
-          {activeGroup && <div className="invite-hint">Who you invite must be registered. Only the owner can invite.</div>}
+          <div className="invite-hint">Type their exact username. They must be registered.</div>
         </div>
 
         <form className="mini-form" onSubmit={createGroup}>
@@ -280,24 +265,6 @@ export default function ServerView() {
 
       {/* Main chat */}
       <main className="chat">
-        {/* Real-time invite popups — show as toasts at the top of the chat */}
-        {invites.length > 0 && (
-          <div className="invite-toasts">
-            {invites.map((inv) => (
-              <div key={inv.inviteId ?? inv.id} className="invite-toast">
-                <span className="invite-icon">{inv.fromIcon ?? '👤'}</span>
-                <div className="invite-body">
-                  <strong>{inv.fromName}</strong> invited you to <strong>{inv.groupName}</strong>
-                </div>
-                <div className="invite-actions">
-                  <button className="btn-accept" onClick={() => respondInvite(inv, 'accept')}>Accept</button>
-                  <button className="btn-decline" onClick={() => respondInvite(inv, 'decline')}>Decline</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         <div className="chat-header">
           # {activeGroup?.chats.find((c) => c.id === activeChatId)?.name ?? 'general'}
         </div>
