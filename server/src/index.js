@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import pingRoutes from './routes/ping.js';
 import serverRoutes from './routes/servers.js';
 import messageRoutes from './routes/messages.js';
+import inviteRoutes from './routes/invites.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -26,6 +27,7 @@ app.use(cookieParser());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/servers', serverRoutes);
+app.use('/api/invites', inviteRoutes);
 app.use('/api', messageRoutes);
 app.use('/api', pingRoutes);
 

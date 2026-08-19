@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../api/client.js';
-import { useRealtime } from '../hooks/useRealtime.js';
+import { useRealtime, useUserRealtime } from '../hooks/useRealtime.js';
 import { disconnectSocket } from '../socket/index.js';
 
 export default function ServerView() {
@@ -18,19 +18,37 @@ export default function ServerView() {
   const [newChat, setNewChat] = useState('');
   const [inviteUsername, setInviteUsername] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  // Incoming invites (either fetched on load, or pushed live via socket).
+  const [invites, setInvites] = useState([]);
   const msgEndRef = useRef(null);
 
-  // Load groups on mount.
-  useEffect(() => {
-    api.listServers().then(({ servers }) => {
+  const loadGroups = useCallback(async (selectGroupId) => {
+    try {
+      const { servers } = await api.listServers();
       setGroups(servers);
-      if (servers.length > 0) {
+      if (selectGroupId) {
+        const g = servers.find((x) => x.id === selectGroupId);
+        if (g) {
+          setActiveGroup(g);
+          setActiveChatId(g.chats[0]?.id ?? null);
+        }
+      } else if (servers.length > 0 && !activeGroup) {
         const g = servers[0];
         setActiveGroup(g);
         if (g.chats.length > 0) setActiveChatId(g.chats[0].id);
       }
-    }).catch(() => {});
-  }, []);
+    } catch {
+      /* ignore */
+    }
+  }, [activeGroup]);
+
+  // Load groups + pending invites on mount.
+  useEffect(() => {
+    loadGroups();
+    api.listInvites().then(({ invites }) => setInvites(invites)).catch(() => {});
+  }, [loadGroups]);
 
   const pickGroup = (g) => {
     setActiveGroup(g);
@@ -60,6 +78,29 @@ export default function ServerView() {
   }, []);
 
   useRealtime(activeChatId, { onMessage: applyMessage, onReaction: applyReaction });
+
+  // Real-time invites: when someone invites us, push a toast to the top.
+  const onNewInvite = useCallback((inv) => {
+    setInvites((prev) => [inv, ...prev]);
+  }, []);
+
+  const respondInvite = useCallback(async (inv, action) => {
+    setInvites((prev) => prev.filter((i) => i.inviteId !== inv.inviteId && i.id !== inv.id));
+    try {
+      if (action === 'accept') {
+        const { group } = await api.acceptInvite(inv.inviteId ?? inv.id);
+        await loadGroups(group.id);
+      } else {
+        await api.declineInvite(inv.inviteId ?? inv.id);
+      }
+    } catch (e) {
+      setError(e.message);
+      // reload invites to reconcile
+      api.listInvites().then(({ invites }) => setInvites(invites)).catch(() => {});
+    }
+  }, [loadGroups]);
+
+  useUserRealtime(onNewInvite);
 
   useEffect(() => {
     msgEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
@@ -136,10 +177,10 @@ export default function ServerView() {
     e.preventDefault();
     if (!inviteUsername.trim() || !activeGroup) return;
     try {
-      const { member } = await api.inviteMember(activeGroup.id, inviteUsername.trim());
-      setActiveGroup((g) => ({ ...g, members: [...g.members, member] }));
+      await api.inviteMember(activeGroup.id, inviteUsername.trim());
       setInviteUsername('');
       setError('');
+      setNotice(`Invite sent to ${inviteUsername.trim()} — they'll get a popup to accept.`);
     } catch (err) {
       setError(err.message);
     }
@@ -222,10 +263,29 @@ export default function ServerView() {
 
       {/* Main chat */}
       <main className="chat">
+        {/* Real-time invite popups — show as toasts at the top of the chat */}
+        {invites.length > 0 && (
+          <div className="invite-toasts">
+            {invites.map((inv) => (
+              <div key={inv.inviteId ?? inv.id} className="invite-toast">
+                <span className="invite-icon">{inv.fromIcon ?? '👤'}</span>
+                <div className="invite-body">
+                  <strong>{inv.fromName}</strong> invited you to <strong>{inv.groupName}</strong>
+                </div>
+                <div className="invite-actions">
+                  <button className="btn-accept" onClick={() => respondInvite(inv, 'accept')}>Accept</button>
+                  <button className="btn-decline" onClick={() => respondInvite(inv, 'decline')}>Decline</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="chat-header">
           # {activeGroup?.chats.find((c) => c.id === activeChatId)?.name ?? 'general'}
         </div>
 
+        {notice && <div className="notice chat-notice" onClick={() => setNotice('')}>✓ {notice}</div>}
         {error && <div className="error chat-error" onClick={() => setError('')}>⚠ {error}</div>}
 
         <div className="messages">

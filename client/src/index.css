@@ -126,6 +126,23 @@ body {
   padding: 16px; font-weight: 600; color: #fff; border-bottom: 1px solid #1f2024;
 }
 .chat-error { margin: 8px 16px 0; cursor: pointer; }
+.notice { background: rgba(87,242,135,.12); border: 1px solid #57f287; color: #57f287; border-radius: 6px; padding: 8px 12px; font-size: 13px; margin: 8px 16px 0; cursor: pointer; }
+
+/* Invite toasts */
+.invite-toasts { padding: 8px 16px 0; display: flex; flex-direction: column; gap: 8px; }
+.invite-toast {
+  display: flex; align-items: center; gap: 12px; background: var(--bg-panel);
+  border: 1px solid var(--accent); border-radius: 8px; padding: 10px 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+}
+.invite-icon { font-size: 22px; }
+.invite-body { flex: 1; font-size: 14px; }
+.invite-actions { display: flex; gap: 8px; }
+.btn-accept, .btn-decline { border: none; border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-accept { background: var(--accent); color: #fff; }
+.btn-accept:hover { background: var(--accent-hover); }
+.btn-decline { background: var(--bg-chan); color: var(--text); }
+.btn-decline:hover { background: var(--danger); color: #fff; }
 .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .empty { color: var(--muted); padding: 24px; text-align: center; }
 

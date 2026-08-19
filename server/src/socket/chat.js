@@ -3,6 +3,10 @@
 export function registerChatHandlers(io, socket) {
   const uid = socket.data.userId;
 
+  // Every socket joins a personal room so targeted events (like new invites)
+  // can reach this specific user regardless of which group they're viewing.
+  socket.join(`user:${uid}`);
+
   // Enter/leave a channel's room to receive its live messages.
   socket.on('channel:join', ({ channelId }) => {
     socket.join(`channel:${channelId}`);

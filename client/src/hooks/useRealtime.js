@@ -28,3 +28,23 @@ export function useRealtime(channelId, handlers) {
 
   return getSocket();
 }
+
+// useUserRealtime listens for events targeted at this user (e.g. new invites).
+export function useUserRealtime(onNewInvite) {
+  const cbRef = useRef(onNewInvite);
+  cbRef.current = onNewInvite;
+
+  useEffect(() => {
+    const socket = connectSocket();
+    if (socket.disconnected) socket.connect();
+
+    const onInvite = (data) => cbRef.current?.(data);
+    socket.on('invite:new', onInvite);
+
+    return () => {
+      socket.off('invite:new', onInvite);
+    };
+  }, []);
+
+  return getSocket();
+}

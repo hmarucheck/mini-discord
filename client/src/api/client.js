@@ -26,6 +26,9 @@ export const api = {
     request(`/servers/${serverId}/chats`, { method: 'POST', body: JSON.stringify({ name }) }),
   inviteMember: (serverId, username) =>
     request(`/servers/${serverId}/members`, { method: 'POST', body: JSON.stringify({ username }) }),
+  listInvites: () => request('/invites'),
+  acceptInvite: (id) => request(`/invites/${id}/accept`, { method: 'POST' }),
+  declineInvite: (id) => request(`/invites/${id}/decline`, { method: 'POST' }),
 
   listMessages: (channelId) => request(`/channels/${channelId}/messages`),
   sendMessage: (channelId, content) =>

@@ -23,6 +23,17 @@ router.post('/register', async (req, res, next) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
+    const displayName = String(name).trim();
+    if (displayName.length < 2 || displayName.length > 24) {
+      return res.status(400).json({ error: 'Username must be 2-24 characters' });
+    }
+
+    // Unique username (case-insensitive, DB-agnostic).
+    const allNames = await prisma.user.findMany({ select: { name: true } });
+    if (allNames.some((u) => u.name.toLowerCase() === displayName.toLowerCase())) {
+      return res.status(409).json({ error: 'That username is already taken' });
+    }
+
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
       return res.status(409).json({ error: 'Email already registered' });
@@ -30,7 +41,7 @@ router.post('/register', async (req, res, next) => {
 
     const hash = await bcrypt.hash(String(password), 10);
     const user = await prisma.user.create({
-      data: { email: normalizedEmail, name: String(name).trim(), hash },
+      data: { email: normalizedEmail, name: displayName, hash },
     });
 
     res.cookie(COOKIE_NAME, signToken(user.id), cookieOptions());

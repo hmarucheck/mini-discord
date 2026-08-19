@@ -24,10 +24,12 @@ model User {
   bio       String? @default("")
   createdAt DateTime @default(now())
 
-  memberships Membership[]
-  messages    Message[]
-  reactions   Reaction[]
-  servers     Server[]      @relation("ServerOwner")
+  memberships     Membership[]
+  messages        Message[]
+  reactions       Reaction[]
+  servers         Server[]     @relation("ServerOwner")
+  invitesSent     Invite[]     @relation("InviteFrom")
+  invitesReceived Invite[]     @relation("InviteTo")
 }
 
 model Server {
@@ -40,6 +42,7 @@ model Server {
 
   memberships Membership[]
   channels    Channel[]
+  invites     Invite[]
 }
 
 model Membership {
@@ -88,4 +91,18 @@ model Reaction {
   createdAt DateTime @default(now())
 
   @@unique([userId, messageId, emoji])
+}
+
+model Invite {
+  id         Int      @id @default(autoincrement())
+  serverId   Int
+  server     Server   @relation(fields: [serverId], references: [id])
+  fromUserId Int
+  fromUser   User     @relation("InviteFrom", fields: [fromUserId], references: [id])
+  toUserId   Int
+  toUser     User     @relation("InviteTo", fields: [toUserId], references: [id])
+  status     String   @default("pending") // pending | accepted | declined
+  createdAt  DateTime @default(now())
+
+  @@index([toUserId, status])
 }

@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getIO } from '../socket/io.js';
 
 const router = Router();
 router.use(requireAuth);
 
 // A "group" is a set of members + one or more chats (formerly channel).
-// A "chat" is a messaging room inside a group.
+// Joining a group requires an invite that the recipient accepts.
 
 // GET /api/servers  -> groups the current user belongs to (with chats + members)
 router.get('/', async (req, res, next) => {
@@ -19,7 +20,6 @@ router.get('/', async (req, res, next) => {
       },
       orderBy: { id: 'asc' },
     });
-    // Flatten members out of the join table for the client.
     const groups = servers.map((s) => ({
       id: s.id,
       name: s.name,
@@ -66,24 +66,23 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// POST /api/servers/:serverId/members  -> invite someone by their username
+// POST /api/servers/:serverId/members  -> send an invite by username (pending)
 router.post('/:serverId/members', async (req, res, next) => {
   try {
     const serverId = Number(req.params.serverId);
     const username = String(req.body?.username ?? '').trim().toLowerCase();
     if (!username) return res.status(400).json({ error: 'Username is required' });
 
-    // Inviter must be a member to invite others.
+    // Inviter must be a member, and only owners may invite.
     const inviter = await prisma.membership.findUnique({
       where: { userId_serverId: { userId: req.user.id, serverId } },
     });
     if (!inviter) return res.status(403).json({ error: 'Not a member of this group' });
-    if (inviter.role === 'member') {
-      return res.status(403).json({ error: 'Only an owner can invite members' });
+    if (inviter.role !== 'owner') {
+      return res.status(403).json({ error: 'Only the group owner can invite' });
     }
 
-    // Find the invitee by username (case-insensitive, DB-agnostic — works on
-    // both SQLite (dev) and Postgres (prod) since 'insensitive' mode is PG-only).
+    // Find the invitee by username (case-insensitive, DB-agnostic).
     const allUsers = await prisma.user.findMany({ select: { id: true, name: true, icon: true } });
     const invitee = allUsers.find((u) => u.name.toLowerCase() === username);
     if (!invitee) return res.status(404).json({ error: 'No user with that username' });
@@ -94,12 +93,28 @@ router.post('/:serverId/members', async (req, res, next) => {
     });
     if (existing) return res.status(409).json({ error: 'Already a member' });
 
-    await prisma.membership.create({
-      data: { userId: invitee.id, serverId, role: 'member' },
+    // Don't stack duplicate pending invites.
+    const dup = await prisma.invite.findFirst({
+      where: { serverId, toUserId: invitee.id, status: 'pending' },
     });
+    if (dup) return res.status(409).json({ error: 'Invite already sent & waiting' });
 
-    const member = { id: invitee.id, name: invitee.name, icon: invitee.icon, role: 'member' };
-    res.status(201).json({ member });
+    const invite = await prisma.invite.create({
+      data: { serverId, fromUserId: req.user.id, toUserId: invitee.id, status: 'pending' },
+    });
+    const group = await prisma.server.findUnique({ where: { id: serverId } });
+
+    // Realtime: tell the invitee's open sockets we invited them.
+    const io = getIO();
+    if (io) {
+      io.to(`user:${invitee.id}`).emit('invite:new', {
+        inviteId: invite.id,
+        groupName: group?.name ?? '',
+        fromName: req.user.name,
+      });
+    }
+
+    res.status(201).json({ inviteId: invite.id });
   } catch (err) {
     next(err);
   }

@@ -1,11 +1,13 @@
 // Mini-Discord data model.
 // DEVELOPMENT: SQLite (a single local file, zero setup). When going public,
 // change provider to "postgresql" and set DATABASE_URL to a hosted DB
-// (Neon/Supabase/Railway). All migrations/routes/auth/realtime stay identical.
+// (this repo ships schema.postgres.prisma for that). Models are identical in
+// both files.
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
+  provider      = "prisma-client-js"
+  output        = "../node_modules/.prisma/client"
+  binaryTargets = ["native"]
 }
 
 datasource db {
@@ -14,21 +16,23 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String
-  hash      String
-  icon      String? // emoji or URL to avatar
-  bio       String?  @default("")
-  createdAt DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  name         String
+  hash         String
+  icon         String? // emoji or URL to avatar
+  bio          String?  @default("")
+  createdAt    DateTime @default(now())
 
-  memberships Membership[]
-  messages    Message[]
-  reactions   Reaction[]
-  servers     Server[]     @relation("ServerOwner")
+  memberships     Membership[]
+  messages        Message[]
+  reactions       Reaction[]
+  servers         Server[]     @relation("ServerOwner")
+  invitesSent     Invite[]     @relation("InviteFrom")
+  invitesReceived Invite[]     @relation("InviteTo")
 }
 
-// A "server" is Discord's guild — a collection of channels with its own members.
+// A "group" (formerly server) is a collection of chats + members.
 model Server {
   id        Int      @id @default(autoincrement())
   name      String
@@ -39,21 +43,22 @@ model Server {
 
   memberships Membership[]
   channels    Channel[]
+  invites     Invite[]
 }
 
-// Membership = "which users belong to which servers".
+// Membership = which users belong to which groups.
 model Membership {
   userId   Int
   serverId Int
   user     User     @relation(fields: [userId], references: [id])
   server   Server   @relation(fields: [serverId], references: [id])
-  role     String   @default("member") // "owner" | "admin" | "member"
+  role     String   @default("member") // "owner" | "member"
   joinedAt DateTime @default(now())
 
   @@id([userId, serverId])
 }
 
-// A channel is a chatroom inside a server.
+// A chat (formerly channel) is a messaging room inside a group.
 model Channel {
   id        Int      @id @default(autoincrement())
   name      String
@@ -89,4 +94,20 @@ model Reaction {
   createdAt DateTime @default(now())
 
   @@unique([userId, messageId, emoji])
+}
+
+// An invite: someone asks a user (by username) to join a group. Status is
+// pending until the recipient accepts or declines.
+model Invite {
+  id         Int      @id @default(autoincrement())
+  serverId   Int
+  server     Server   @relation(fields: [serverId], references: [id])
+  fromUserId Int
+  fromUser   User     @relation("InviteFrom", fields: [fromUserId], references: [id])
+  toUserId   Int
+  toUser     User     @relation("InviteTo", fields: [toUserId], references: [id])
+  status     String   @default("pending") // pending | accepted | declined
+  createdAt  DateTime @default(now())
+
+  @@index([toUserId, status])
 }
