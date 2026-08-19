@@ -29,6 +29,6 @@ COPY server/ ./server/
 COPY --from=client-build /app/client/dist ./client/dist
 EXPOSE 4000
 WORKDIR /app/server
-# Apply migrations, then boot. (Client generator is baked into Stage 2, so no
-# runtime network/generation is needed.)
-CMD ["sh", "-c", "npx prisma migrate deploy --schema prisma/schema.postgres.prisma && node src/index.js"]
+# start.sh appends ?schema=public to DATABASE_URL (fixes Prisma P3019), runs
+# migrations, then boots the app.
+CMD ["sh", "start.sh"]
