@@ -23,8 +23,8 @@ A miniature Discord — real user accounts, servers, chatrooms, messages, emoji 
 cd server
 npm install
 cp .env.example .env          # DATABASE_URL defaults to file:./dev.db
-npx prisma migrate dev --name init
-npm run seed                   # demo users alice/bob + a Test Lounge server
+npx prisma db push --schema prisma/schema.prisma
+# npx prisma db seed          # optional: demo users alice/bob + Test Lounge
 npm run dev
 
 # terminal 2 — frontend (http://localhost:5173)
