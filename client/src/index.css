@@ -83,7 +83,18 @@ body {
   color: #fff; font-weight: 600; padding: 16px; border-bottom: 1px solid #1f2024;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.channel-scroller { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.channel-scroller { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; max-height: 180px; }
+.members-list { max-height: 140px; gap: 2px; }
+.section-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--muted); padding: 10px 12px 4px;
+}
+.member { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 6px; }
+.member:hover { background: var(--hover); }
+.member.me .member-name { color: #fff; }
+.member-icon { font-size: 16px; }
+.member-name { font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.owner-badge { font-size: 12px; }
 .channel {
   width: 100%; text-align: left; background: none; border: none; color: var(--muted);
   padding: 8px 10px; border-radius: 6px; font-size: 14px; cursor: pointer;

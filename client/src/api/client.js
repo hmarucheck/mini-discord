@@ -22,8 +22,10 @@ export const api = {
 
   listServers: () => request('/servers'),
   createServer: (name) => request('/servers', { method: 'POST', body: JSON.stringify({ name }) }),
-  createChannel: (serverId, name) =>
-    request(`/servers/${serverId}/channels`, { method: 'POST', body: JSON.stringify({ name }) }),
+  createChat: (serverId, name) =>
+    request(`/servers/${serverId}/chats`, { method: 'POST', body: JSON.stringify({ name }) }),
+  inviteMember: (serverId, username) =>
+    request(`/servers/${serverId}/members`, { method: 'POST', body: JSON.stringify({ username }) }),
 
   listMessages: (channelId) => request(`/channels/${channelId}/messages`),
   sendMessage: (channelId, content) =>

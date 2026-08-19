@@ -7,48 +7,48 @@ import { disconnectSocket } from '../socket/index.js';
 export default function ServerView() {
   const { user, logout } = useAuth();
 
-  const [servers, setServers] = useState([]);
-  const [activeServer, setActiveServer] = useState(null);
-  const [activeChannelId, setActiveChannelId] = useState(null);
+  const [groups, setGroups] = useState([]); // {id,name,icon,ownerId,chats[],members[]}
+  const [activeGroup, setActiveGroup] = useState(null);
+  const [activeChatId, setActiveChatId] = useState(null);
 
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
 
-  const [newServer, setNewServer] = useState('');
-  const [newChannel, setNewChannel] = useState('');
+  const [newGroup, setNewGroup] = useState('');
+  const [newChat, setNewChat] = useState('');
+  const [inviteUsername, setInviteUsername] = useState('');
   const [error, setError] = useState('');
   const msgEndRef = useRef(null);
 
-  // Load servers on mount.
+  // Load groups on mount.
   useEffect(() => {
     api.listServers().then(({ servers }) => {
-      setServers(servers);
+      setGroups(servers);
       if (servers.length > 0) {
-        setActiveServer(servers[0]);
-        if (servers[0].channels.length > 0) setActiveChannelId(servers[0].channels[0].id);
+        const g = servers[0];
+        setActiveGroup(g);
+        if (g.chats.length > 0) setActiveChatId(g.chats[0].id);
       }
     }).catch(() => {});
   }, []);
 
-  // Select a different server.
-  const pickServer = (s) => {
-    setActiveServer(s);
-    setActiveChannelId(s.channels[0]?.id ?? null);
+  const pickGroup = (g) => {
+    setActiveGroup(g);
+    setActiveChatId(g.chats[0]?.id ?? null);
     setMessages([]);
   };
 
-  // Fetch messages when channel changes.
+  // Fetch messages when chat changes.
   useEffect(() => {
-    if (!activeChannelId) return setMessages([]);
-    api.listMessages(activeChannelId).then(({ messages }) => setMessages(messages)).catch((e) => setError(e.message));
-  }, [activeChannelId]);
+    if (!activeChatId) return setMessages([]);
+    api.listMessages(activeChatId).then(({ messages }) => setMessages(messages)).catch((e) => setError(e.message));
+  }, [activeChatId]);
 
-  // Realtime: append new messages / patch reactions.
   const applyMessage = useCallback(({ message }) => {
-    if (message.channelId === activeChannelId) {
+    if (message.channelId === activeChatId) {
       setMessages((m) => (m.some((x) => x.id === message.id) ? m : [...m, message]));
     }
-  }, [activeChannelId]);
+  }, [activeChatId]);
 
   const applyReaction = useCallback(({ messageId, emoji, reacted, userId }) => {
     setMessages((msgs) => msgs.map((m) => {
@@ -59,9 +59,8 @@ export default function ServerView() {
     }));
   }, []);
 
-  useRealtime(activeChannelId, { onMessage: applyMessage, onReaction: applyReaction });
+  useRealtime(activeChatId, { onMessage: applyMessage, onReaction: applyReaction });
 
-  // Auto-scroll to newest message.
   useEffect(() => {
     msgEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
   }, [messages.length]);
@@ -69,10 +68,10 @@ export default function ServerView() {
   const send = async (e) => {
     e.preventDefault();
     const content = draft.trim();
-    if (!content || !activeChannelId) return;
+    if (!content || !activeChatId) return;
     setDraft('');
     try {
-      const { message } = await api.sendMessage(activeChannelId, content);
+      const { message } = await api.sendMessage(activeChatId, content);
       setMessages((m) => (m.some((x) => x.id === message.id) ? m : [...m, message]));
     } catch (err) {
       setError(err.message);
@@ -81,8 +80,6 @@ export default function ServerView() {
   };
 
   const toggleReact = async (messageId, emoji) => {
-    // Optimistic update so reactions feel instant AND work even if the socket
-    // hiccups — then reconcile with the server's authoritative answer.
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== messageId) return m;
@@ -94,7 +91,6 @@ export default function ServerView() {
     );
     try {
       const { reacted } = await api.toggleReaction(messageId, emoji);
-      // Reconcile to server truth in case of a race.
       setMessages((prev) =>
         prev.map((m) => {
           if (m.id !== messageId) return m;
@@ -110,27 +106,40 @@ export default function ServerView() {
     }
   };
 
-  const createServer = async (e) => {
+  const createGroup = async (e) => {
     e.preventDefault();
-    if (!newServer.trim()) return;
+    if (!newGroup.trim()) return;
     try {
-      const { server } = await api.createServer(newServer.trim());
-      setServers((s) => [...s, server]);
-      setNewServer('');
-      pickServer(server);
+      const { server } = await api.createServer(newGroup.trim());
+      setGroups((g) => [...g, server]);
+      setNewGroup('');
+      pickGroup(server);
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const createChannel = async (e) => {
+  const createChat = async (e) => {
     e.preventDefault();
-    if (!newChannel.trim() || !activeServer) return;
+    if (!newChat.trim() || !activeGroup) return;
     try {
-      const { channel } = await api.createChannel(activeServer.id, newChannel.trim());
-      setActiveServer((s) => ({ ...s, channels: [...s.channels, channel] }));
-      setActiveChannelId(channel.id);
-      setNewChannel('');
+      const { chat } = await api.createChat(activeGroup.id, newChat.trim());
+      setActiveGroup((g) => ({ ...g, chats: [...g.chats, chat] }));
+      setActiveChatId(chat.id);
+      setNewChat('');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const invite = async (e) => {
+    e.preventDefault();
+    if (!inviteUsername.trim() || !activeGroup) return;
+    try {
+      const { member } = await api.inviteMember(activeGroup.id, inviteUsername.trim());
+      setActiveGroup((g) => ({ ...g, members: [...g.members, member] }));
+      setInviteUsername('');
+      setError('');
     } catch (err) {
       setError(err.message);
     }
@@ -143,50 +152,62 @@ export default function ServerView() {
 
   return (
     <div className="shell">
-      {/* Server rail */}
+      {/* Group rail */}
       <div className="rail">
-        {servers.map((s) => (
+        {groups.map((g) => (
           <button
-            key={s.id}
-            className={`rail-btn ${activeServer?.id === s.id ? 'active' : ''}`}
-            onClick={() => pickServer(s)}
-            title={s.name}
+            key={g.id}
+            className={`rail-btn ${activeGroup?.id === g.id ? 'active' : ''}`}
+            onClick={() => pickGroup(g)}
+            title={g.name}
           >
-            {s.icon ?? '🏠'}
+            {g.icon ?? '👥'}
           </button>
         ))}
       </div>
 
-      {/* Sidebar: channels */}
+      {/* Sidebar */}
       <aside className="sidebar">
-        <div className="server-name">{activeServer?.name ?? 'No server'}</div>
+        <div className="server-name">{activeGroup?.name ?? 'No group'}</div>
 
+        <div className="section-label">Chats</div>
         <div className="channel-scroller">
-          {activeServer?.channels.map((c) => (
+          {activeGroup?.chats.map((c) => (
             <button
               key={c.id}
-              className={`channel ${activeChannelId === c.id ? 'active' : ''}`}
-              onClick={() => setActiveChannelId(c.id)}
+              className={`channel ${activeChatId === c.id ? 'active' : ''}`}
+              onClick={() => setActiveChatId(c.id)}
             >
               # {c.name}
             </button>
           ))}
+          <form className="mini-form" onSubmit={createChat}>
+            <input value={newChat} onChange={(e) => setNewChat(e.target.value)} placeholder="+ new chat" />
+          </form>
         </div>
 
-        <form className="mini-form" onSubmit={createChannel}>
+        <div className="section-label">Members ({activeGroup?.members.length ?? 0})</div>
+        <div className="channel-scroller members-list">
+          {activeGroup?.members.map((m) => (
+            <div key={m.id} className={`member ${m.id === user.id ? 'me' : ''}`}>
+              <span className="member-icon">{m.icon ?? '👤'}</span>
+              <span className="member-name">{m.name}</span>
+              {m.role === 'owner' && <span className="owner-badge">👑</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* Invite by username */}
+        <form className="mini-form" onSubmit={invite}>
           <input
-            value={newChannel}
-            onChange={(e) => setNewChannel(e.target.value)}
-            placeholder="+ new channel"
+            value={inviteUsername}
+            onChange={(e) => setInviteUsername(e.target.value)}
+            placeholder="+ invite by username"
           />
         </form>
 
-        <form className="mini-form" onSubmit={createServer}>
-          <input
-            value={newServer}
-            onChange={(e) => setNewServer(e.target.value)}
-            placeholder="+ new server"
-          />
+        <form className="mini-form" onSubmit={createGroup}>
+          <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="+ new group" />
         </form>
 
         <div className="session">
@@ -201,13 +222,18 @@ export default function ServerView() {
 
       {/* Main chat */}
       <main className="chat">
-        <div className="chat-header"># {activeServer?.channels.find((c) => c.id === activeChannelId)?.name ?? 'general'}</div>
+        <div className="chat-header">
+          # {activeGroup?.chats.find((c) => c.id === activeChatId)?.name ?? 'general'}
+        </div>
 
         {error && <div className="error chat-error" onClick={() => setError('')}>⚠ {error}</div>}
 
         <div className="messages">
           {messages.length === 0 ? (
-            <div className="empty">No messages yet — say hi!</div>
+            <div className="empty">
+              No messages yet — say hi!<br />
+              <span className="muted">Tip: invite friends with their username (top-right of the sidebar) or create a new chat.</span>
+            </div>
           ) : (
             messages.map((m) => (
               <Message key={m.id} msg={m} meId={user.id} onReact={toggleReact} />
@@ -220,18 +246,15 @@ export default function ServerView() {
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder={`Message #${activeServer?.channels.find((c) => c.id === activeChannelId)?.name ?? ''}`}
-            disabled={!activeChannelId}
+            placeholder={`Message ${activeGroup?.chats.find((c) => c.id === activeChatId)?.name ?? ''}`}
+            disabled={!activeChatId}
           />
-          <button type="submit" disabled={!draft.trim() || !activeChannelId}>➤</button>
+          <button type="submit" disabled={!draft.trim() || !activeChatId}>➤</button>
         </form>
       </main>
     </div>
   );
 }
-
-// A single message with author, content, and a reaction row.
-const QUICK_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '😢', '🔥', '👀'];
 
 function Message({ msg, meId, onReact }) {
   const counts = {};
