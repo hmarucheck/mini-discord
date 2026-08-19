@@ -13,6 +13,7 @@ RUN npm run build
 FROM node:22-slim AS server-deps
 WORKDIR /app/server
 COPY server/package*.json ./
+COPY server/prisma ./prisma
 RUN npm install --omit=dev && npx prisma generate --schema prisma/schema.postgres.prisma
 
 # ---- Stage 3: runtime ----
