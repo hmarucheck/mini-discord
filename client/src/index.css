@@ -1,0 +1,157 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #313338;
+  --bg-panel: #2b2d31;
+  --bg-side: #2b2d31;
+  --bg-rail: #1e1f22;
+  --bg-chan: #41434a;
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --text: #f2f3f5;
+  --muted: #949ba4;
+  --danger: #ed4245;
+  --hover: #35373c;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ---- Auth pages ---- */
+.auth-shell {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% -20%, #2f3241 0%, var(--bg) 60%);
+}
+.auth-card {
+  width: min(400px, 92vw);
+  background: var(--bg-panel);
+  border-radius: 12px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.4);
+}
+.auth-card h1 { font-size: 22px; }
+.sub { color: var(--muted); margin-bottom: 12px; }
+.auth-card label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-top: 8px; }
+.auth-card input {
+  background: var(--bg); border: 1px solid #1f2024; color: var(--text);
+  border-radius: 6px; padding: 10px 12px; font-size: 14px; outline: none;
+}
+.auth-card input:focus { border-color: var(--accent); }
+.auth-card button {
+  margin-top: 16px; background: var(--accent); color: #fff; border: none;
+  border-radius: 6px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.auth-card button:hover:not(:disabled) { background: var(--accent-hover); }
+.auth-card button:disabled { opacity: .6; cursor: default; }
+.error { background: rgba(237,66,69,.12); border: 1px solid var(--danger); color: var(--danger); border-radius: 6px; padding: 8px 12px; font-size: 13px; }
+.switch { color: var(--muted); font-size: 14px; text-align: center; margin-top: 8px; }
+.switch a { color: var(--accent); text-decoration: none; }
+
+/* ---- App shell ---- */
+.shell { display: flex; height: 100vh; }
+
+/* Server rail (leftmost column of server icons) */
+.rail {
+  width: 72px; background: var(--bg-rail);
+  display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 8px;
+  overflow-y: auto;
+}
+.rail-btn {
+  width: 48px; height: 48px; border-radius: 50%; border: none; background: var(--bg-chan);
+  color: #fff; font-size: 22px; cursor: pointer; display: grid; place-items: center;
+  transition: border-radius .15s, background .15s;
+}
+.rail-btn:hover { border-radius: 16px; background: var(--accent); }
+.rail-btn.active { border-radius: 16px; background: var(--accent); }
+
+/* Sidebar: server name + channels */
+.sidebar {
+  width: 260px; background: var(--bg-side);
+  display: flex; flex-direction: column;
+}
+.server-name {
+  color: #fff; font-weight: 600; padding: 16px; border-bottom: 1px solid #1f2024;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.channel-scroller { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.channel {
+  width: 100%; text-align: left; background: none; border: none; color: var(--muted);
+  padding: 8px 10px; border-radius: 6px; font-size: 14px; cursor: pointer;
+}
+.channel:hover { background: var(--hover); color: #fff; }
+.channel.active { background: var(--bg-chan); color: #fff; }
+
+.mini-form { padding: 4px 8px; }
+.mini-form input {
+  width: 100%; background: var(--bg); border: 1px solid #1f2024; color: var(--text);
+  border-radius: 6px; padding: 8px 10px; font-size: 13px; outline: none;
+}
+.mini-form input:focus { border-color: var(--accent); }
+
+.session {
+  display: flex; align-items: center; gap: 10px; padding: 12px;
+  background: rgba(0,0,0,.2); border-top: 1px solid #1f2024;
+}
+.session-icon { font-size: 22px; }
+.session-meta { display: flex; flex-direction: column; line-height: 1.2; overflow: hidden; }
+.session-meta strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.muted { color: var(--muted); font-size: 12px; }
+.logout-btn { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+.logout-btn:hover { color: var(--danger); }
+
+/* ---- Chat ---- */
+.chat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.chat-header {
+  padding: 16px; font-weight: 600; color: #fff; border-bottom: 1px solid #1f2024;
+}
+.chat-error { margin: 8px 16px 0; cursor: pointer; }
+.messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.empty { color: var(--muted); padding: 24px; text-align: center; }
+
+.message { display: flex; gap: 12px; }
+.message:hover { background: rgba(255,255,255,.02); border-radius: 6px; }
+.msg-avatar {
+  width: 38px; height: 38px; border-radius: 50%; background: var(--accent);
+  display: grid; place-items: center; font-size: 18px; flex-shrink: 0;
+}
+.msg-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.msg-meta { display: flex; align-items: baseline; gap: 8px; }
+.msg-meta strong { font-size: 14px; }
+.msg-time { color: var(--muted); font-size: 11px; }
+.msg-content { font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
+
+.reactions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.reaction {
+  background: var(--bg); border: 1px solid #2f3136; color: var(--text);
+  border-radius: 12px; padding: 2px 8px; font-size: 13px; cursor: pointer;
+}
+.reaction:hover { border-color: var(--muted); }
+.reaction.mine { background: var(--accent); border-color: var(--accent); }
+
+/* Composer */
+.composer {
+  display: flex; gap: 8px; padding: 16px; border-top: 1px solid #1f2024;
+}
+.composer input {
+  flex: 1; background: var(--bg-panel); border: none; color: var(--text);
+  border-radius: 8px; padding: 12px 14px; font-size: 15px; outline: none;
+}
+.composer input:focus { box-shadow: 0 0 0 1px var(--accent); }
+.composer button {
+  background: var(--accent); color: #fff; border: none; border-radius: 8px;
+  padding: 0 18px; font-size: 16px; cursor: pointer;
+}
+.composer button:hover:not(:disabled) { background: var(--accent-hover); }
+.composer button:disabled { opacity: .5; cursor: default; }
+
+.boot { height: 100%; display: grid; place-items: center; color: var(--muted); }

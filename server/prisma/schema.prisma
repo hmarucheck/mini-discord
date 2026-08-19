@@ -1,0 +1,91 @@
+// Mini-Discord data model.
+// DEVELOPMENT: SQLite (a single local file, zero setup). When going public,
+// change provider to "postgresql" and set DATABASE_URL to a hosted DB
+// (Neon/Supabase/Railway). All migrations/routes/auth/realtime stay identical.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  hash      String
+  icon      String? // emoji or URL to avatar
+  bio       String?  @default("")
+  createdAt DateTime @default(now())
+
+  memberships Membership[]
+  messages    Message[]
+  reactions   Reaction[]
+  servers     Server[]     @relation("ServerOwner")
+}
+
+// A "server" is Discord's guild — a collection of channels with its own members.
+model Server {
+  id        Int      @id @default(autoincrement())
+  name      String
+  icon      String?
+  ownerId   Int
+  owner     User     @relation("ServerOwner", fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+
+  memberships Membership[]
+  channels    Channel[]
+}
+
+// Membership = "which users belong to which servers".
+model Membership {
+  userId   Int
+  serverId Int
+  user     User     @relation(fields: [userId], references: [id])
+  server   Server   @relation(fields: [serverId], references: [id])
+  role     String   @default("member") // "owner" | "admin" | "member"
+  joinedAt DateTime @default(now())
+
+  @@id([userId, serverId])
+}
+
+// A channel is a chatroom inside a server.
+model Channel {
+  id        Int      @id @default(autoincrement())
+  name      String
+  serverId  Int
+  server    Server   @relation(fields: [serverId], references: [id])
+  createdAt DateTime @default(now())
+
+  messages Message[]
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  content   String
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  channelId Int
+  channel   Channel  @relation(fields: [channelId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reactions Reaction[]
+
+  @@index([channelId, createdAt])
+}
+
+model Reaction {
+  id        Int      @id @default(autoincrement())
+  emoji     String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  messageId Int
+  message   Message  @relation(fields: [messageId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, messageId, emoji])
+}

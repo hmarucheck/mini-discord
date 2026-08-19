@@ -1,0 +1,36 @@
+{
+  "name": "mini-discord-server",
+  "version": "0.1.0",
+  "description": "Mini-Discord backend: Express REST + Socket.io realtime + Prisma/Postgres",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:generate": "prisma generate",
+    "seed": "node prisma/seed.js",
+    "test": "node --test"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "prisma": "^5.18.0",
+    "@prisma/client": "^5.18.0",
+    "socket.io": "^4.7.5",
+    "zod": "^3.23.8"
+  },
+  "allowScripts": {
+    "@prisma/client@5.22.0": true,
+    "prisma@5.22.0": true,
+    "@prisma/engines@5.22.0": true
+  }
+}
