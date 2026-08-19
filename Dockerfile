@@ -12,6 +12,9 @@ RUN npm run build
 # ---- Stage 2: install backend deps ----
 FROM node:22-slim AS server-deps
 WORKDIR /app/server
+# openssl is required so Prisma can detect the libssl version (else it defaults
+# to openssl-1.1.x and the engine fails to load).
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 COPY server/package*.json ./
 COPY server/prisma ./prisma
 RUN npm install --omit=dev && npx prisma generate --schema prisma/schema.postgres.prisma
@@ -20,6 +23,7 @@ RUN npm install --omit=dev && npx prisma generate --schema prisma/schema.postgre
 FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=server-deps /app/server/node_modules ./server/node_modules
 COPY server/ ./server/
 COPY --from=client-build /app/client/dist ./client/dist
