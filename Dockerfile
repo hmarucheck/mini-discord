@@ -24,4 +24,5 @@ COPY server/ ./server/
 COPY --from=client-build /app/client/dist ./client/dist
 EXPOSE 4000
 WORKDIR /app/server
-CMD ["node", "src/index.js"]
+# Generate the client against the Postgres schema, apply migrations, then boot.
+CMD ["sh", "-c", "npx prisma generate --schema prisma/schema.postgres.prisma && npx prisma migrate deploy --schema prisma/schema.postgres.prisma && node src/index.js"]

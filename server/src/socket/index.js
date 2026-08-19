@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { env } from '../lib/config.js';
+import { corsOrigin } from '../lib/config.js';
 import { cookieParserJwt } from './socketAuth.js';
 import { registerChatHandlers } from './chat.js';
 import { setIO } from './io.js';
@@ -9,7 +9,7 @@ import { setIO } from './io.js';
 export function attachSocketServer(httpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: env.CLIENT_ORIGINS,
+      origin: corsOrigin(),
       credentials: true,
     },
   });

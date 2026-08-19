@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import { env } from './lib/config.js';
+import { env, corsOrigin } from './lib/config.js';
 import { attachSocketServer } from './socket/index.js';
 import authRoutes from './routes/auth.js';
 import pingRoutes from './routes/ping.js';
@@ -16,7 +16,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: env.CLIENT_ORIGINS,
+    origin: corsOrigin(),
     credentials: true,
   })
 );

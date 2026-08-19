@@ -1,7 +1,8 @@
-// Mini-Discord data model.
-// DEVELOPMENT: SQLite (a single local file, zero setup). When going public,
-// change provider to "postgresql" and set DATABASE_URL to a hosted DB
-// (Neon/Supabase/Railway). All migrations/routes/auth/realtime stay identical.
+// Production/Postgres schema for hosted deploys (Render/Fly/etc.).
+// Identical models to schema.prisma, but provider=postgresql.
+// Local dev keeps the SQLite schema.prisma. Run migrate/generate against this
+// file with:  prisma migrate deploy --schema prisma/schema.postgres.prisma
+//             prisma generate --schema prisma/schema.postgres.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -9,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -18,17 +19,16 @@ model User {
   email     String   @unique
   name      String
   hash      String
-  icon      String? // emoji or URL to avatar
-  bio       String?  @default("")
+  icon      String?
+  bio       String? @default("")
   createdAt DateTime @default(now())
 
   memberships Membership[]
   messages    Message[]
   reactions   Reaction[]
-  servers     Server[]     @relation("ServerOwner")
+  servers     Server[]      @relation("ServerOwner")
 }
 
-// A "server" is Discord's guild — a collection of channels with its own members.
 model Server {
   id        Int      @id @default(autoincrement())
   name      String
@@ -41,19 +41,17 @@ model Server {
   channels    Channel[]
 }
 
-// Membership = "which users belong to which servers".
 model Membership {
   userId   Int
   serverId Int
-  user     User     @relation(fields: [userId], references: [id])
-  server   Server   @relation(fields: [serverId], references: [id])
-  role     String   @default("member") // "owner" | "admin" | "member"
+  user     User   @relation(fields: [userId], references: [id])
+  server   Server @relation(fields: [serverId], references: [id])
+  role     String @default("member")
   joinedAt DateTime @default(now())
 
   @@id([userId, serverId])
 }
 
-// A channel is a chatroom inside a server.
 model Channel {
   id        Int      @id @default(autoincrement())
   name      String

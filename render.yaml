@@ -1,0 +1,26 @@
+# Render Blueprint — deploys Mini-Discord (web service + Postgres) in one step.
+# Push this repo to GitHub, then in Render: "New" → "Blueprint" → pick this repo.
+# Render auto-creates the free Postgres and wires DATABASE_URL for you.
+
+databases:
+  - name: mini-discord-db
+    plan: free
+
+services:
+  - type: web
+    name: mini-discord
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/ping
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_ORIGINS
+        value: https://mini-discord.onrender.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mini-discord-db
+          property: connectionString
+    autoDeploy: true
