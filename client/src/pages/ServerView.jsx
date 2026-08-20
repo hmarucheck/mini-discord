@@ -16,6 +16,7 @@ export default function ServerView() {
 
   const [newGroup, setNewGroup] = useState('');
   const [newChat, setNewChat] = useState('');
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [inviteUsername, setInviteUsername] = useState('');
   const [inviteBusy, setInviteBusy] = useState(false);
   const [error, setError] = useState('');
@@ -139,6 +140,7 @@ export default function ServerView() {
       const { server } = await api.createServer(newGroup.trim());
       setGroups((g) => [...g, server]);
       setNewGroup('');
+      setCreateMenuOpen(false);
       pickGroup(server);
     } catch (err) {
       setError(err.message);
@@ -153,6 +155,7 @@ export default function ServerView() {
       setActiveGroup((g) => ({ ...g, chats: [...g.chats, chat] }));
       setActiveChatId(chat.id);
       setNewChat('');
+      setCreateMenuOpen(false);
     } catch (err) {
       setError(err.message);
     }
@@ -206,7 +209,30 @@ export default function ServerView() {
       <aside className="sidebar">
         <div className="server-name">{activeGroup?.name ?? 'No group'}</div>
 
-        <div className="section-label">Chats</div>
+        <div className="section-label">
+          <span>Chats</span>
+          <button className="plus-btn" onClick={() => setCreateMenuOpen((o) => !o)} title="Create chat or group">＋</button>
+        </div>
+        {createMenuOpen && (
+          <div className="create-menu">
+            <form className="create-form" onSubmit={createChat}>
+              <input
+                value={newChat}
+                onChange={(e) => setNewChat(e.target.value)}
+                placeholder="New chat name"
+              />
+              <button type="submit" disabled={!newChat.trim() || !activeGroup}>＋ New chat</button>
+            </form>
+            <form className="create-form" onSubmit={createGroup}>
+              <input
+                value={newGroup}
+                onChange={(e) => setNewGroup(e.target.value)}
+                placeholder="New group name"
+              />
+              <button type="submit" disabled={!newGroup.trim()}>＋ New group</button>
+            </form>
+          </div>
+        )}
         <div className="channel-scroller">
           {activeGroup?.chats.map((c) => (
             <button
@@ -293,7 +319,12 @@ export default function ServerView() {
   );
 }
 
+// Many emoji to react with — shown in the picker when you click ➕ on a message.
+const EMOJIS = ['👍', '❤️', '😂', '🔥', '🎉', '😮', '😢', '👏', '💯', '🙌', '😅', '😍',
+  '👀', '🤔', '😭', '💀', '😎', '🥳', '🤝', '😈', '🫠', '🙏', '😡', '⭐', '🏆', '💪'];
+
 function Message({ msg, meId, onReact }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const counts = {};
   const mine = [];
   for (const r of msg.reactions || []) {
@@ -322,13 +353,25 @@ function Message({ msg, meId, onReact }) {
               {e} {counts[e]}
             </button>
           ))}
-          {!mine.includes('👍') && (
-            <button className="reaction add" onClick={() => onReact(msg.id, '👍')} title="Add reaction">
-              ➕
-            </button>
-          )}
+          <button className="reaction add" onClick={() => setPickerOpen((p) => !p)} title="Add reaction">
+            ➕
+          </button>
         </div>
       </div>
+
+      {pickerOpen && (
+        <div className="emoji-picker">
+          {EMOJIS.map((e) => (
+            <button
+              key={e}
+              className={`emoji-opt ${mine.includes(e) ? 'mine' : ''}`}
+              onClick={() => { onReact(msg.id, e); setPickerOpen(false); }}
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

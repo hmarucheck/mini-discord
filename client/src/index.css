@@ -88,7 +88,43 @@ body {
 .section-label {
   font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
   color: var(--muted); padding: 10px 12px 4px;
+  display: flex; align-items: center; justify-content: space-between;
 }
+.plus-btn {
+  background: none; border: none; color: var(--muted); font-size: 16px;
+  cursor: pointer; padding: 0 2px; line-height: 1;
+}
+.plus-btn:hover { color: var(--accent); }
+.create-menu {
+  padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 6px;
+  border-bottom: 1px solid #1f2024;
+}
+.create-form { display: flex; flex-direction: column; gap: 6px; }
+.create-form input {
+  background: var(--bg); border: 1px solid #1f2024; color: var(--text);
+  border-radius: 6px; padding: 8px 10px; font-size: 13px; outline: none;
+}
+.create-form input:focus { border-color: var(--accent); }
+.create-form button {
+  background: var(--accent); color: #fff; border: none; border-radius: 6px;
+  padding: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.create-form button:hover:not(:disabled) { background: var(--accent-hover); }
+.create-form button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Emoji picker */
+.emoji-picker {
+  position: absolute; z-index: 20; margin-top: 4px;
+  background: var(--bg-panel); border: 1px solid #3c3f45; border-radius: 8px;
+  padding: 8px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5); max-width: 220px;
+}
+.emoji-opt {
+  background: none; border: none; font-size: 20px; cursor: pointer;
+  border-radius: 6px; padding: 2px; line-height: 1;
+}
+.emoji-opt:hover { background: var(--hover); }
+.emoji-opt.mine { background: var(--accent); }
 .member { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 6px; }
 .member:hover { background: var(--hover); }
 .member.me .member-name { color: #fff; }
@@ -158,7 +194,7 @@ body {
 .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .empty { color: var(--muted); padding: 24px; text-align: center; }
 
-.message { display: flex; gap: 12px; }
+.message { display: flex; gap: 12px; position: relative; }
 .message:hover { background: rgba(255,255,255,.02); border-radius: 6px; }
 .msg-avatar {
   width: 38px; height: 38px; border-radius: 50%; background: var(--accent);
